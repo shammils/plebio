@@ -1,6 +1,6 @@
 electron app goes here
 
-[quick demo](demo_0.0.0.gif)
+[quick demo](../demo_0.0.0.gif)
 
 TODO
 - load past messages(they are already being saved)
