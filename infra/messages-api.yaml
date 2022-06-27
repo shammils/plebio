@@ -1,0 +1,32 @@
+---
+swagger: "2.0"
+info:
+  description: "Completely forgot about the API needed to get messages"
+  version: "2022-06-25T21:25:00Z"
+  title: "plebio-messages"
+basePath: "/testnet"
+schemes:
+- "https"
+paths:
+  /:
+    get:
+      produces:
+      - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:*:lambda:path/2015-03-31/functions/arn:aws:lambda:*:${AWS_ACCOUNT_ID}:function:plebio-messages/invocations"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        contentHandling: "CONVERT_TO_TEXT"
+        type: "aws_proxy"
+definitions:
+  Empty:
+    type: "object"
+    title: "Empty Schema"

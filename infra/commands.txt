@@ -1,0 +1,89 @@
+- dynamo tables are set to on demand, so they're free if no usage occurs. lambdas are the same naturally
+- I believe there are some redundant allow access permissions, but thats the nature of AWS IAM debugging
+- you need to manually update the plebio-policy.json doc with correct vals. a sed command would be cool but im too lazy for that.
+- I forgot to add the env var to the lambda names
+- adding more environment vars to the lambda deploys caused errors, so I manually added whatever else was needed
+- all these commands can be replaced by a single terraform script
+- created the messages API way after the fact, so there are no commands for it; just an exported yaml file. took less than 30 seconds to create and execute successfully in the console though.
+
+// set some env vars
+export AWS_ACCOUNT_ID=<your account id>
+export AWS_ENVIRONMENT=testnet
+export AWS_REGION=us-west-2
+
+// create dynamo tables
+// create table to store connection info
+aws dynamodb create-table \
+  --table-name plebio-wss-connections_${AWS_ENVIRONMENT} \
+  --attribute-definitions AttributeName=connectionId,AttributeType=S \
+  --key-schema AttributeName=connectionId,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+
+// create table to store messages(for a short period)
+aws dynamodb create-table \
+  --table-name plebio-wss-messages_${AWS_ENVIRONMENT} \
+  --attribute-definitions AttributeName=id,AttributeType=S AttributeName=sort,AttributeType=N \
+  --key-schema AttributeName=id,KeyType=HASH AttributeName=sort,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST
+
+// set the ttl for the messages table
+aws dynamodb update-time-to-live \
+  --table-name plebio-wss-messages_${AWS_ENVIRONMENT} \
+  --time-to-live-specification Enabled=true,AttributeName=sort
+
+// setup auth
+// create policy that allows all the things for this infra. not reccomended this way but im lazy
+// lambdas need access to tables, APIs need access to lambdas, which should be it
+aws iam create-policy --policy-name plebio-wss_${AWS_ENVIRONMENT} --policy-document file://plebio-policy.json --description 'Policy containing all the things to execute PLEBio placeholder infra, which is not reccomended in this format btw'
+
+// create the role
+aws iam create-role --role-name plebio-wss_${AWS_ENVIRONMENT} --assume-role-policy-document file://plebio-role-trust.json --description 'Role containing all the things to execute PLEBio placeholder infra, which is not reccomended in this format btw'
+
+// attach custom policy to role
+aws iam attach-role-policy --role-name plebio-wss_${AWS_ENVIRONMENT} --policy-arn arn:aws:iam::${AWS_ACCOUNT_ID}:policy/plebio-wss_${AWS_ENVIRONMENT}
+
+// attach role to allow lambda to log to cloudwatch
+aws iam attach-role-policy --role-name plebio-wss_${AWS_ENVIRONMENT} --policy-arn arn:aws:iam::aws:policy/AWSLambdaBasicExecutionRole
+
+// zip the websocket lambda(and message lambda in the future)
+7z a plebio-wss.zip ./lambda-websocket/*
+// or
+cd lambda-websocket && zip ../plebio-wss.zip * && cd ..
+
+// same for message lambda
+7z a plebio-messages.zip ./lambda-messages/*
+// or
+cd lambda-messages && zip ../plebio-messages.zip * && cd ..
+
+// deploy wss lambda. timeout is 10 seconds, which is way too damn long for something like this in the first place
+// 128mb is more than enough RAM, but increasing it to at least n will give you more CPU power. IPFS is slow as hell
+// comparitively, so if anything we should slow things down from here lol
+aws lambda create-function --function-name 'plebio-wss' --runtime 'nodejs16.x' --timeout 10 --memory-size 128 --zip-file fileb://plebio-wss.zip --environment Variables={ENV=${AWS_ENVIRONMENT},REGION=${AWS_REGION}} --handler index.handler --description 'Backend for our PLEBio websocket server' --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/plebio-wss_${AWS_ENVIRONMENT}
+
+// APIG needs permission to invoke this lambda
+aws lambda add-permission \
+  --function-name plebio-wss \
+  --action lambda:InvokeFunction \
+  --statement-id apig \
+  --principal apigateway.amazonaws.com
+
+// deploy message lambda
+aws lambda create-function \
+  --function-name plebio-messages \
+  --runtime nodejs16.x \
+  --timeout 30 \
+  --memory-size 256 \
+  --zip-file fileb://plebio-messages.zip \
+  --environment Variables={ENV=${AWS_ENVIRONMENT}} \
+  --handler index.handler \
+  --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/plebio-wss_${AWS_ENVIRONMENT} \
+  --description 'Returns last n messages to caller. It should simulate IPFS. Messages auto delete after n hours/days, which is not IPFS like whatsoever, but we dont have to pay for IPFS.'
+
+// create messages API
+
+// create websocket API from yaml
+// at this point in time, you cant create a websocket API from yaml(only REST), and im too lazy to write the 6 commands to do so.
+// CloudFormation or Terraform could work, but im not doing that either.
+
+// create REST API from yaml
+// missing too, goes here I guess

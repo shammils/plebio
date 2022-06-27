@@ -1,0 +1,10 @@
+html {
+  background: red;
+}
+.chatbox-container {
+  min-height: 300px;
+}
+.chatbox-messages-container {
+  min-height: 300px;
+  border: 1px solid black;
+}

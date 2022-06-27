@@ -1,0 +1,49 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": "dynamodb:Query",
+            "Resource": [
+                "arn:aws:dynamodb:*:${AWS_ACCOUNT_ID}:table/plebio-wss-messages_${AWS_ENVIRONMENT}",
+                "arn:aws:dynamodb:*:${AWS_ACCOUNT_ID}:table/*/index/*"
+            ]
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "lambda:InvokeFunction",
+                "dynamodb:DeleteItem",
+                "dynamodb:Scan"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:*:${AWS_ACCOUNT_ID}:table/*/index/*",
+                "arn:aws:dynamodb:*:${AWS_ACCOUNT_ID}:table/plebio-wss-connections_${AWS_ENVIRONMENT}",
+                "arn:aws:lambda:*:${AWS_ACCOUNT_ID}:function:plebio-wss"
+            ]
+        },
+        {
+            "Sid": "allowAccountToManageConnectionsAnyAPI",
+            "Effect": "Allow",
+            "Action": [
+                "execute-api:ManageConnections"
+            ],
+            "Resource": [
+                "arn:aws:execute-api:*:${AWS_ACCOUNT_ID}:${AWS_API_ID}/*"
+            ]
+        },
+        {
+            "Sid": "allowInvokeLambdaAnyAPI",
+            "Effect": "Allow",
+            "Action": [
+                "execute-api:Invoke"
+            ],
+            "Resource": [
+                "arn:aws:execute-api:*:${AWS_ACCOUNT_ID}:${AWS_API_ID}/${AWS_ENVIRONMENT}/*"
+            ]
+        }
+    ]
+}
