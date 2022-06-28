@@ -16,12 +16,19 @@ window.electronAPI.receiveMessage((event, value) => {
   console.log('got message from main', value);
   // should probably check if the data is even valid
   appendMessage(value);
+  scrollMessageContainerToBottom();
 });
 
 async function init() {
+  renderChatBox();
   const val = await window.electronAPI.getUsername();
   username.innerText = val;
-  renderChatBox();
+  // fetch past messages
+  const messages = await window.electronAPI.getMessages();
+  // first message instance in array is most recent, so insert from the end
+  console.log('messages', messages);
+  for (let i = messages.length-1; i >= 0; i--) { appendMessage(messages[i]); }
+  scrollMessageContainerToBottom();
 }
 function renderChatBox() {
   while (root.firstChild) { root.removeChild(root.firstChild); }
@@ -35,6 +42,9 @@ function renderChatBox() {
   const ctb = ce('input',[{name:'class',val:'chatbox-text-input'}],null,cccrc);
   const csb = ce('button',[{name:'class',val:'chatbox-btn-submit'}],'submit',cccrc);
   csb.addEventListener('click', onSendMessageButtonClick);
+  ctb.addEventListener('keyup', e => {
+    if (e.keyCode === 13) onSendMessageButtonClick();
+  });
 }
 function appendMessage(data) {
   const thing = document.querySelector('.add-messages-here-i-guess');
@@ -59,6 +69,13 @@ async function onSendMessageButtonClick() {
   const response = await window.electronAPI.sendMessage(input.value);
   // dont even remember is there is a response, but we should check it I guess
   appendMessage({name:username.innerText,message:input.value});
+  scrollMessageContainerToBottom();
+  // everything successful, clear the message box
+  input.value = '';
+}
+function scrollMessageContainerToBottom() {
+  const el = document.querySelector('.chatbox-messages-container');
+  el.scrollTop = el.scrollHeight;
 }
 
 // utility

@@ -2,10 +2,15 @@ const {app, BrowserWindow, ipcMain, dialog} = require('electron');
 const path = require('path');
 const utils = require('./utils');
 const Websocket = require('ws');
+const url = require('url');
+
+const websocketUrl = 'wss://rl8xgbibzd.execute-api.us-west-2.amazonaws.com/testnet';
+// we could use the ws API for this
+const messagesUrl = 'https://wiy4r4sqc6.execute-api.us-west-2.amazonaws.com/testnet';
 
 let username = process.env.PLEBIO_USER_NAME || utils.getAddress();
 // intended product wont use websockets, so move this crap in a communication layer at some point
-const ws = new Websocket('wss://rl8xgbibzd.execute-api.us-west-2.amazonaws.com/testnet');
+const ws = new Websocket(websocketUrl);
 ws.on('open', () => {
 	console.log('connection open');
 });
@@ -50,6 +55,7 @@ app.whenReady().then(() => {
 	ipcMain.handle('dialog:openFile', handleFileOpen);
 	ipcMain.handle('getUsername', () => username);
 	ipcMain.handle('sendMessage', sendMessage);
+	ipcMain.handle('getMessages', getMessages);
 	createWindow();
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) { createWindow(); }
@@ -68,4 +74,16 @@ async function sendMessage(event, message) {
 		name: username,
 		message,
 	}));
+}
+async function getMessages() {
+	const parsedUrl = url.parse(messagesUrl);
+	const response = await utils.request({hostname: parsedUrl.hostname, path: parsedUrl.path});
+	// shit, we should return the timestamps on these messages. they are ordered by date created
+	// descending
+	console.log('response from message server',response);
+	if (response.statusCode !== 200) {
+		console.log('somthing messed up, why');
+		return [];
+	}
+	return response.body;
 }

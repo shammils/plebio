@@ -1,5 +1,4 @@
 const {contextBridge, ipcRenderer} = require('electron');
-//const wsUrl = 'wss://rl8xgbibzd.execute-api.us-west-2.amazonaws.com/testnet';
 
 contextBridge.exposeInMainWorld('electronAPI', {
 	openFile: () => ipcRenderer.invoke('dialog:openFile'),
@@ -7,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	getUsername: () => ipcRenderer.invoke('getUsername'),
 	sendMessage: (message) => ipcRenderer.invoke('sendMessage', message),
 	receiveMessage: (payload) => ipcRenderer.on('receiveMessage', payload),
+	getMessages: () => ipcRenderer.invoke('getMessages'),
 });
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -17,20 +17,4 @@ window.addEventListener('DOMContentLoaded', () => {
 	for (const dependency of ['chrome', 'node', 'electron']) {
 		replaceText(`${dependency}-version`, process.versions[dependency]);
 	}
-
-	/*window.ws = new WebSocket(wsUrl);
-	window.ws.addEventListener('open', () => {
-		console.log('connected');
-		// send message
-		setTimeout(() => {
-			window.ws.send(JSON.stringify({
-				action: 'onMessage',
-				message: 'testing from electron',
-				name: 'from_electron',
-			}));
-		}, 1000);
-	});
-	window.ws.addEventListener('message', message => {
-		console.log('message from server', message);
-	});*/
 });
